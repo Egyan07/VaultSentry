@@ -287,31 +287,6 @@ def get_digest_data(since_hours: int = 25) -> dict:
     }
 
 
-
-    """
-    Return the last N scan runs with their backup sizes for trend analysis.
-    Used to detect sudden drops in total backup size.
-    Returns oldest-first so charts render left-to-right.
-    """
-    if not os.path.exists(DB_PATH):
-        return []
-    conn = sqlite3.connect(DB_PATH)
-    cur  = conn.cursor()
-    cur.execute(
-        "SELECT run_time, total_backup_size, files_scanned "
-        "FROM scan_runs WHERE mode='VERIFY' "
-        "ORDER BY id DESC LIMIT ?",
-        (limit,)
-    )
-    rows = cur.fetchall()
-    conn.close()
-    return [
-        {"run_time": r[0], "total_backup_size": r[1] or 0,
-         "files_scanned": r[2] or 0}
-        for r in reversed(rows)  # oldest first
-    ]
-
-
 def get_size_trend(limit: int = 14) -> list[dict]:
     """
     Return the last N scan runs with their backup sizes for trend analysis.

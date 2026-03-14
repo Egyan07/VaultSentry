@@ -49,13 +49,8 @@ def should_send_digest(now: datetime | None = None) -> bool:
       - Current hour >= DIGEST_TIME
       - Digest has not already been sent today
 
-    Called after every verify run so the digest fires on the first
-    run of the day that meets the time condition.
-
     `now` can be injected for testing — defaults to datetime.now().
     """
-    global _last_digest_date
-
     if not DIGEST_ENABLED:
         return False
 
