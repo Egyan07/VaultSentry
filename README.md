@@ -280,7 +280,7 @@ Any **CRITICAL alert should be treated as an immediate security incident.**
 
 # 👨‍💻 Author
 
-**Egyan Sharma**
+**Egyan07**
 
 Developed for **Red Parrot Accounting Ltd**
 
