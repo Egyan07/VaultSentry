@@ -9,7 +9,7 @@
 ![License](https://img.shields.io/github/license/Egyan07/VaultSentry)
 
 **Built by Egyan**
-Red Parrot Accounting Ltd
+| Red Parrot Accounting Ltd
 
 VaultSentry is a **backup integrity monitoring system** designed to detect tampering, ransomware encryption, corruption, missing files, stale backups, and abnormal backup size drops.
 
