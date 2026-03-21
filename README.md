@@ -268,12 +268,12 @@ VaultSentry
 
 Future improvements planned for VaultSentry:
 
-* cloud backup monitoring (S3 / Backblaze)
-* ransomware pattern learning
-* web dashboard
+* Cloud backup monitoring (S3 / Backblaze)
+* Ransomware pattern learning
+* Web dashboard
 * Slack / Teams alerts
-* anomaly detection on backup trends
-* cross-platform support (Linux)
+* Anomaly detection on backup trends
+* Cross-platform support (Linux)
 
 ---
 
