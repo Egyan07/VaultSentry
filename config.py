@@ -9,7 +9,7 @@
 import os
 
 APP_NAME    = "VaultSentry"
-APP_VERSION = "1.0.0"
+APP_VERSION = "1.0.1"
 
 # Paths to monitor for backup files (add as many as needed)
 BACKUP_PATHS = [
@@ -31,6 +31,18 @@ MAX_BACKUP_AGE_HOURS = 25
 # Alert if a backup file's entropy spikes above this (ransomware indicator)
 # Normal files: 4.0–6.5 | Encrypted/compressed: 7.5–8.0
 ENTROPY_SPIKE_THRESHOLD = 7.8
+
+# File extensions excluded from entropy-based ransomware detection.
+# These formats are inherently high-entropy (compressed or structured binary)
+# so a high entropy score alone is NOT a reliable ransomware indicator for them.
+# Hash-change alerts still fire normally — only the "RANSOMWARE SUSPECTED"
+# entropy-spike escalation is skipped. Structural integrity (is_file_openable)
+# provides the second layer of protection for these formats.
+ENTROPY_EXCLUDE_EXTENSIONS = {
+    ".zip", ".gz", ".7z", ".rar", ".tar",   # already compressed
+    ".pdf",                                   # typically >7.0 entropy by design
+    ".xlsx", ".xls", ".docx",               # ZIP-based Office formats
+}
 
 # Alert if backup total size drops by more than this percentage
 SIZE_DROP_ALERT_PERCENT = 30

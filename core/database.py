@@ -9,7 +9,6 @@ from datetime import datetime, timedelta
 
 from config import DB_PATH, ALERT_COOLDOWN_HOURS
 from logger import log
-from logger import log
 
 
 def init_database():
@@ -89,9 +88,48 @@ def init_database():
     except Exception:
         pass  # Column already exists
 
+    # Persistent key-value store for application state
+    # (e.g. last digest date, last email failure message)
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS settings (
+            key    TEXT PRIMARY KEY,
+            value  TEXT NOT NULL DEFAULT ''
+        )
+    """)
+
     conn.commit()
     conn.close()
     log.info("Database initialised at: %s", DB_PATH)
+
+
+def get_setting(key: str, default: str = "") -> str:
+    """Read a persistent setting value from the database."""
+    if not os.path.exists(DB_PATH):
+        return default
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cur  = conn.cursor()
+        cur.execute("SELECT value FROM settings WHERE key=?", (key,))
+        row = cur.fetchone()
+        conn.close()
+        return row[0] if row is not None else default
+    except Exception:
+        return default
+
+
+def set_setting(key: str, value: str) -> None:
+    """Write a persistent setting value to the database."""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        conn.execute(
+            "INSERT INTO settings (key, value) VALUES (?, ?) "
+            "ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+            (key, value)
+        )
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        log.error("Failed to save setting '%s': %s", key, e)
 
 
 def baseline_exists() -> bool:

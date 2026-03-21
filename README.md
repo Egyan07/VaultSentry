@@ -7,6 +7,11 @@
 ![GitHub issues](https://img.shields.io/github/issues/Egyan07/VaultSentry)
 ![GitHub last commit](https://img.shields.io/github/last-commit/Egyan07/VaultSentry)
 ![License](https://img.shields.io/github/license/Egyan07/VaultSentry)
+![CI](https://github.com/Egyan07/VaultSentry/actions/workflows/ci.yml/badge.svg)
+
+![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)
+![SQLite](https://img.shields.io/badge/SQLite-07405E?style=for-the-badge&logo=sqlite&logoColor=white)
+![Windows](https://img.shields.io/badge/Windows-0078D6?style=for-the-badge&logo=windows&logoColor=white)
 
 **Built by Egyan**
 | Red Parrot Accounting Ltd
@@ -203,6 +208,8 @@ A second detection layer monitors **backup size trends**.
 
 If total backup size drops **≥30% overnight**, VaultSentry generates another CRITICAL alert.
 
+> **Note on compressed/Office formats:** `.zip`, `.pdf`, `.xlsx`, `.docx`, `.gz`, `.7z`, `.rar`, `.xls`, `.tar` files are excluded from entropy-based ransomware escalation because these formats naturally exceed the 7.8 threshold when healthy. Hash changes on these files still raise a `WARNING` alert, and structural integrity checking provides a second layer.
+
 ---
 
 # 🧪 Testing
@@ -267,6 +274,25 @@ Future improvements planned for VaultSentry:
 * Slack / Teams alerts
 * anomaly detection on backup trends
 * cross-platform support (Linux)
+
+---
+
+# 📋 Changelog
+
+**v1.0.1** *(current — security & reliability fixes)*
+
+- **Fix 1 — Digest date persisted to database:** `_last_digest_date` was a module-level variable lost on every process restart. Now persisted in a `settings` DB table — the once-per-day guard survives nightly scheduled task restarts correctly.
+- **Fix 2 — Removed test credential file from repository:** Deleted `testpassword` file accidentally committed. Added `*.password`, `*.secret`, `*.key`, `*.pem`, `*.pfx` to `.gitignore`.
+- **Fix 3 — Email alert failures now visible in GUI:** Failures were logged but invisible. Now persisted to `settings.email_failure` in the DB. Dashboard shows a red banner when email alerts are failing; clears when email succeeds.
+- **Fix 4 — Entropy false positives on PDF/ZIP/Office files eliminated:** `.pdf`, `.xlsx`, `.docx`, `.zip`, `.gz`, `.7z`, `.rar`, `.xls`, `.tar` files naturally score above 7.8 entropy. These extensions now skip the CRITICAL ransomware escalation. Hash-change WARNING still fires. `is_file_openable` integrity check still runs.
+
+**v1.0** *(original release)*
+
+- SHA-256 hashing, Shannon entropy ransomware detection, 4-step nightly pipeline
+- Backup size trend tracking with drop alert, baseline snapshot versioning + diff viewer
+- Restore capability with per-file overwrite prompts, daily HTML email digest
+- Dark blue GUI: Dashboard, Alerts, Reports, Restore, Snapshots, Settings
+- 162 tests, 73% coverage, CI on Python 3.10/3.11/3.12
 
 ---
 

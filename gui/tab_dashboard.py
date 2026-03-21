@@ -8,7 +8,7 @@ from tkinter import ttk
 from datetime import datetime
 
 from gui.theme import *
-from core.database import get_stats, get_size_trend
+from core.database import get_stats, get_size_trend, get_setting
 from utils.file_utils import format_size
 
 
@@ -31,6 +31,16 @@ class DashboardTab(tk.Frame):
         self._ts_label = tk.Label(hdr, text="", font=FONT_SMALL,
                                    fg=TEXT_MUTED, bg=BG_PANEL)
         self._ts_label.pack(side="right")
+
+        # FIX: Email failure banner — visible when alert emails are failing
+        # Hidden by default; shown only when core/alerts.py records a failure
+        self._email_fail_var    = tk.StringVar(value="")
+        self._email_fail_banner = tk.Label(
+            self, textvariable=self._email_fail_var,
+            font=FONT_BODY, fg="#ff4444", bg="#3a0a0a",
+            padx=16, pady=6, anchor="w"
+        )
+        # Banner is packed/unpacked dynamically by refresh_stats()
 
         # Stat cards row
         cards_frame = tk.Frame(self, bg=BG_DARK, pady=16)
@@ -172,6 +182,17 @@ class DashboardTab(tk.Frame):
 
         now = datetime.now().strftime("%H:%M:%S")
         self._ts_label.config(text=f"Refreshed {now}")
+
+        # FIX: Show/hide email failure banner based on persisted failure flag
+        email_failure = get_setting("email_failure", "")
+        if email_failure:
+            self._email_fail_var.set(
+                f"  \u26a0  Email alerts failing — {email_failure[:120]}"
+            )
+            self._email_fail_banner.pack(fill="x", after=self.winfo_children()[0])
+        else:
+            self._email_fail_banner.pack_forget()
+
         self._draw_trend()
 
     def _draw_trend(self):

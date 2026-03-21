@@ -181,46 +181,48 @@ class TestBuildDigestText:
 # =============================================================================
 
 class TestShouldSendDigest:
-    def test_returns_false_when_disabled(self, monkeypatch):
+    def test_returns_false_when_disabled(self, db_env, monkeypatch):
         import core.digest as digest_mod
         monkeypatch.setattr(digest_mod, "DIGEST_ENABLED", False)
-        monkeypatch.setattr(digest_mod, "_last_digest_date", None)
         assert should_send_digest() is False
 
-    def test_returns_false_before_digest_time(self, monkeypatch):
+    def test_returns_false_before_digest_time(self, db_env, monkeypatch):
         import core.digest as digest_mod
-        monkeypatch.setattr(digest_mod, "DIGEST_ENABLED",    True)
-        monkeypatch.setattr(digest_mod, "DIGEST_TIME",       14)
-        monkeypatch.setattr(digest_mod, "_last_digest_date", None)
+        from core.database import set_setting
+        monkeypatch.setattr(digest_mod, "DIGEST_ENABLED", True)
+        monkeypatch.setattr(digest_mod, "DIGEST_TIME",    14)
+        set_setting("last_digest_date", "")  # no prior send
 
         fake_now = datetime.now().replace(hour=10, minute=0)
         assert should_send_digest(now=fake_now) is False
 
-    def test_returns_true_at_digest_time(self, monkeypatch):
+    def test_returns_true_at_digest_time(self, db_env, monkeypatch):
         import core.digest as digest_mod
-        monkeypatch.setattr(digest_mod, "DIGEST_ENABLED",    True)
-        monkeypatch.setattr(digest_mod, "DIGEST_TIME",       8)
-        monkeypatch.setattr(digest_mod, "_last_digest_date", None)
+        from core.database import set_setting
+        monkeypatch.setattr(digest_mod, "DIGEST_ENABLED", True)
+        monkeypatch.setattr(digest_mod, "DIGEST_TIME",    8)
+        set_setting("last_digest_date", "")  # no prior send
 
         fake_now = datetime.now().replace(hour=9, minute=0)
         assert should_send_digest(now=fake_now) is True
 
-    def test_returns_false_if_already_sent_today(self, monkeypatch):
+    def test_returns_false_if_already_sent_today(self, db_env, monkeypatch):
         import core.digest as digest_mod
-        fake_now = datetime.now().replace(hour=10)
-        today    = fake_now.date()
+        from core.database import set_setting
+        fake_now  = datetime.now().replace(hour=10)
+        today_str = fake_now.strftime("%Y-%m-%d")
 
-        monkeypatch.setattr(digest_mod, "DIGEST_ENABLED",    True)
-        monkeypatch.setattr(digest_mod, "DIGEST_TIME",       0)
-        monkeypatch.setattr(digest_mod, "_last_digest_date", today)
+        monkeypatch.setattr(digest_mod, "DIGEST_ENABLED", True)
+        monkeypatch.setattr(digest_mod, "DIGEST_TIME",    0)
+        set_setting("last_digest_date", today_str)  # already sent today
 
         assert should_send_digest(now=fake_now) is False
 
-    def test_mark_digest_sent_sets_date(self, monkeypatch):
-        import core.digest as digest_mod
-        monkeypatch.setattr(digest_mod, "_last_digest_date", None)
+    def test_mark_digest_sent_sets_date(self, db_env):
+        from core.database import get_setting
         mark_digest_sent()
-        assert digest_mod._last_digest_date == datetime.now().date()
+        stored = get_setting("last_digest_date", "")
+        assert stored == datetime.now().strftime("%Y-%m-%d")
 
 
 # =============================================================================

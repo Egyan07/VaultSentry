@@ -13,3 +13,11 @@ build/
 .env
 .venv
 venv/
+
+# Credentials and secrets — never commit these
+testpassword
+*.password
+*.secret
+*.key
+*.pem
+*.pfx

@@ -23,7 +23,7 @@ from config import (
     EMAIL_SMTP_SERVER, EMAIL_SMTP_PORT,
 )
 from logger import log
-from core.database import save_alert, is_alert_duplicate
+from core.database import save_alert, is_alert_duplicate, set_setting
 
 try:
     import tkinter as tk
@@ -71,8 +71,13 @@ def raise_alert(severity: str, alert_type: str, filepath: str, details: str):
     if EMAIL_ENABLED:
         try:
             _send_email(severity, alert_type, message)
+            # Clear any previous failure flag on success
+            set_setting("email_failure", "")
         except Exception as e:
-            log.error("Email alert failed: %s", e)
+            err_msg = str(e)
+            log.error("Email alert failed: %s", err_msg)
+            # FIX: persist failure so Dashboard can show a visible warning banner
+            set_setting("email_failure", err_msg)
 
 
 # =============================================================================

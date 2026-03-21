@@ -16,6 +16,7 @@ from config import (
     BACKUP_PATHS, MONITORED_EXTENSIONS,
     MAX_BACKUP_AGE_HOURS, ENTROPY_SPIKE_THRESHOLD,
     SIZE_DROP_ALERT_PERCENT, DB_PATH,
+    ENTROPY_EXCLUDE_EXTENSIONS,
 )
 from logger import log
 from core.database import baseline_exists, save_scan_run, get_previous_backup_size
@@ -311,8 +312,18 @@ def _step_verify_baseline(cur, now_str):
             alerts_raised += 1
             entropy_change = current_entropy - stored_entropy
             size_change    = current_size - stored_size
+            ext            = os.path.splitext(filepath)[1].lower()
 
-            if current_entropy > ENTROPY_SPIKE_THRESHOLD and entropy_change > 0.5:
+            # FIX: Skip entropy-based ransomware detection for file types that are
+            # inherently high-entropy (compressed archives, PDF, ZIP-based Office
+            # formats). These legitimately score above 7.8 when untouched, so a
+            # high entropy score alone is not a reliable ransomware indicator for them.
+            # Hash-change alerts still fire — only the CRITICAL escalation is skipped.
+            # Structural integrity (is_file_openable) provides the second layer.
+            entropy_check_applicable = ext not in ENTROPY_EXCLUDE_EXTENSIONS
+
+            if entropy_check_applicable and \
+                    current_entropy > ENTROPY_SPIKE_THRESHOLD and entropy_change > 0.5:
                 detail = (
                     f"HASH CHANGED + HIGH ENTROPY — possible ransomware encryption!\n"
                     f"  Old hash    : {stored_hash}\n"

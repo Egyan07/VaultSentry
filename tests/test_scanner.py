@@ -152,7 +152,7 @@ class TestStepVerifyBaseline:
 
     def test_high_entropy_change_flagged_ransomware(self, db_env):
         backup_dir = db_env["backup_dir"]
-        f = backup_dir / "encrypted.zip"
+        f = backup_dir / "encrypted.bak"
         f.write_bytes(bytes(range(256)) * 400)
         _insert_record(db_env["db_path"], str(f), "deadbeef" * 8, entropy=3.0)
 

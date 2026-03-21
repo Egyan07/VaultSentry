@@ -18,8 +18,7 @@
 import os
 import ssl
 import smtplib
-import sqlite3
-from datetime import datetime, date
+from datetime import datetime
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
@@ -31,15 +30,17 @@ from config import (
     DB_PATH,
 )
 from logger import log
-from core.database import get_digest_data
+from core.database import get_digest_data, get_setting, set_setting
 from utils.file_utils import format_size
 
 
 # =============================================================================
-#   Digest state — track last sent date to prevent duplicate sends
+#   Digest state — persisted to SQLite so it survives process restarts
 # =============================================================================
 
-_last_digest_date: date | None = None
+# FIX: replaced module-level _last_digest_date (lost on restart) with
+# DB-persisted setting "last_digest_date" so the once-per-day guard works
+# even when the scheduled task relaunches the process each night.
 
 
 def should_send_digest(now: datetime | None = None) -> bool:
@@ -58,17 +59,17 @@ def should_send_digest(now: datetime | None = None) -> bool:
     if now.hour < DIGEST_TIME:
         return False
 
-    today = now.date()
-    if _last_digest_date == today:
+    today_str        = now.strftime("%Y-%m-%d")
+    last_digest_date = get_setting("last_digest_date", "")
+    if last_digest_date == today_str:
         return False
 
     return True
 
 
 def mark_digest_sent():
-    """Record that the digest was sent today."""
-    global _last_digest_date
-    _last_digest_date = datetime.now().date()
+    """Persist today's date so duplicate digest sends are suppressed across restarts."""
+    set_setting("last_digest_date", datetime.now().strftime("%Y-%m-%d"))
 
 
 # =============================================================================
