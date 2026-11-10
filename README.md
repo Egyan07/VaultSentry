@@ -1,317 +1,172 @@
-# 🛡 VaultSentry
+<p align="center">
+  <img src="https://img.shields.io/badge/python-3.10%2B-3776AB?logo=python&logoColor=white" alt="Python 3.10+">
+  <img src="https://img.shields.io/badge/platform-Windows-0078D6?logo=windows&logoColor=white" alt="Windows">
+  <img src="https://img.shields.io/badge/storage-SQLite-07405E?logo=sqlite&logoColor=white" alt="SQLite">
+  <a href="https://github.com/Egyan07/VaultSentry/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/Egyan07/VaultSentry/ci.yml?label=CI&logo=githubactions&logoColor=white" alt="CI"></a>
+</p>
 
-### Backup Integrity Monitor for Windows
+# VaultSentry
 
-![GitHub stars](https://img.shields.io/github/stars/Egyan07/VaultSentry?style=social)
-![GitHub forks](https://img.shields.io/github/forks/Egyan07/VaultSentry?style=social)
-![GitHub issues](https://img.shields.io/github/issues/Egyan07/VaultSentry)
-![GitHub last commit](https://img.shields.io/github/last-commit/Egyan07/VaultSentry)
-![License](https://img.shields.io/github/license/Egyan07/VaultSentry)
-![CI](https://github.com/Egyan07/VaultSentry/actions/workflows/ci.yml/badge.svg)
+A nightly integrity check for a backup drive. It hashes every file, compares the drive against a trusted baseline, and tells you when something changed that should not have.
 
-![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)
-![SQLite](https://img.shields.io/badge/SQLite-07405E?style=for-the-badge&logo=sqlite&logoColor=white)
-![Windows](https://img.shields.io/badge/Windows-0078D6?style=for-the-badge&logo=windows&logoColor=white)
+## Why this exists
 
-**Built by Egyan**
-| Red Parrot Accounting Ltd
+A backup you have never verified is a folder of files you hope are intact. Ransomware is the reason to check. The first thing modern ransomware does after encrypting a share is look for the backups and encrypt those too, and the backup job keeps reporting success because it is still copying files, just not the files you wanted.
 
-VaultSentry is a **backup integrity monitoring system** designed to detect tampering, ransomware encryption, corruption, missing files, stale backups, and abnormal backup size drops.
+VaultSentry answers one question every night: is the backup still what it was yesterday, and if not, why.
 
-The system automatically **hashes every file in backup storage**, stores a trusted baseline, and verifies the integrity of the entire backup set every night.
+## What it checks
 
-If anything suspicious occurs, VaultSentry **immediately alerts administrators and includes the issue in a daily digest report**.
+Verification runs four passes and ends with a size trend check.
 
----
+| Pass | What it does |
+|---|---|
+| Baseline files | Re-hashes every file in the baseline and compares against the stored SHA-256 |
+| New files | Picks up files that appeared since the last run and records them |
+| Missing files | Reports files that vanished or moved, by path |
+| Integrity | Confirms each changed file still opens and can be read |
+| Size trend | Compares total backup size against the previous run and alerts on a drop of 30% or more |
 
-# 🧰 Technology
+## Ransomware detection
 
-Python 3
-SQLite Database
-Tkinter Desktop GUI
-SMTP Email Alerts
-Windows Task Scheduler
+Two independent signals, because either one alone produces noise.
 
----
+**Entropy.** Encrypted content sits near the top of the scale. VaultSentry computes Shannon entropy per file. A file whose hash changed and whose entropy exceeds 7.8 raises `CRITICAL: RANSOMWARE SUSPECTED`.
 
-# ✨ Features
+**Size drop.** If the whole backup shrinks by 30% or more overnight, something deleted or overwrote a large amount of data. That raises its own critical alert regardless of entropy.
 
-| Feature                      | Description                                    |
-| ---------------------------- | ---------------------------------------------- |
-| 🔐 SHA-256 Integrity Hashing | Cryptographically strong file verification     |
-| 🧠 Entropy Analysis          | Detects ransomware encryption patterns         |
-| 🛡 Tamper Detection          | Identifies modified or corrupted files         |
-| 🚨 Ransom Note Detection     | Flags common ransomware note filenames         |
-| 📉 Backup Size Monitoring    | Alerts if total backup size drops ≥30%         |
-| 📂 Missing File Detection    | Detects deleted or moved backup files          |
-| ⏳ Stale Backup Alerts        | Warns when newest backup exceeds threshold age |
-| 📧 Email Alerts              | Immediate critical alerts + daily digest       |
-| 📊 Excel Reports             | Multi-sheet colour-coded reports               |
-| 📸 Baseline Snapshots        | Point-in-time baseline versions                |
-| ♻ Restore Engine             | Restore files with folder structure            |
-| 🖥 Desktop Dashboard         | Dark-mode monitoring GUI                       |
-| 🔁 Scheduled Verification    | Automatic nightly verification                 |
-| 🧪 Automated Tests           | 162 unit tests with CI pipeline                |
+Archives and Office formats are excluded from the entropy escalation. `.zip`, `.pdf`, `.xlsx`, `.docx`, `.gz`, `.7z`, `.rar`, `.xls` and `.tar` naturally sit above 7.8 when healthy, so treating them as encrypted would fire every night. A hash change in one of those still raises a warning, and the integrity pass still runs.
 
----
+## Alerts
 
-# 🚀 Installation
+- **Desktop popup** and `msg.exe` message to the admin workstation
+- **Email on critical events**, with the password read from `VAULTSENTRY_EMAIL_PASSWORD`
+- **Daily digest** at the configured hour, one HTML mail with the last 25 hours of alerts, the verification result and backup health
+- **Cooldown** of 24 hours per file and alert type, so one broken file is one alert and not one per run
 
-Run the installer as Administrator:
+## Install
+
+Run the installer as administrator:
 
 ```cmd
-right-click Install_VaultSentry.bat → Run as administrator
+Install_VaultSentry.bat
 ```
 
-The installer will:
+It installs to `C:\SecurityLogs\VaultSentry\`, registers a Windows scheduled task for the nightly run and creates the first baseline.
 
-* install VaultSentry to
-  `C:\SecurityLogs\VaultSentry\`
+Then set your backup paths in `config.py`:
 
-* create a **Windows scheduled task**
+```python
+BACKUP_PATHS = [
+    r"D:\Backups",
+]
+```
 
-* generate the **initial integrity baseline**
+Nothing is monitored until `BACKUP_PATHS` points at real folders.
 
----
-
-# ⚡ Usage
-
-Command line interface:
+## Usage
 
 ```cmd
-python main.py --gui
-python main.py --baseline
-python main.py --verify
-python main.py --snapshot "Before audit Mar 2026"
-python main.py --list-snapshots
-python main.py --restore
-python main.py --digest
-python main.py --report
-python main.py --status
+python main.py --baseline              create or refresh the trusted baseline
+python main.py --verify                run the nightly verification
+python main.py --gui                   desktop dashboard
+python main.py --snapshot "before audit"   save a named point-in-time baseline
+python main.py --list-snapshots        list saved snapshots
+python main.py --restore               interactive restore from backup
+python main.py --digest                send the daily digest now
+python main.py --report                write an Excel report
+python main.py --status                quick console summary
 ```
 
----
+The flags are mutually exclusive, which is deliberate. One run does one job, and the scheduled task calls `--verify`.
 
-# 🖥 GUI Interface
+## Dashboard
 
-VaultSentry includes a desktop monitoring dashboard.
+| Tab | What it shows |
+|---|---|
+| Dashboard | File counts, backup size trend, scan controls |
+| Alerts | Alert history with severity filter |
+| Reports | Generate and open Excel reports |
+| Restore | Restore plan preview before anything is written |
+| Snapshots | Create, browse, diff and delete snapshots |
+| Settings | Current configuration and diagnostics |
 
-| Tab       | Purpose                                      |
-| --------- | -------------------------------------------- |
-| Dashboard | Live stats, backup size trend, scan controls |
-| Alerts    | Alert history with severity filtering        |
-| Reports   | Generate and browse Excel reports            |
-| Restore   | Restore files with preview plan              |
-| Snapshots | Create, browse, diff, delete snapshots       |
-| Settings  | Configuration viewer and diagnostics         |
+## Configuration
 
----
+| Setting | Default | Meaning |
+|---|---|---|
+| `BACKUP_PATHS` | empty | Folders to monitor. Nothing works until this is set |
+| `MONITORED_EXTENSIONS` | document and archive types | File types included in hashing |
+| `MAX_BACKUP_AGE_HOURS` | `25` | Newest file older than this raises a stale backup warning |
+| `ENTROPY_SPIKE_THRESHOLD` | `7.8` | Entropy above this on a changed file means suspected encryption |
+| `SIZE_DROP_ALERT_PERCENT` | `30` | Total size drop that triggers a critical alert |
+| `ALERT_COOLDOWN_HOURS` | `24` | Suppression window per file and alert type |
+| `EMAIL_ENABLED` | `False` | Turns alert email on |
+| `DIGEST_ENABLED` | `False` | Turns the daily HTML digest on |
+| `DIGEST_TIME` | `8` | Hour of day the digest goes out |
 
-# 📧 Email Alert System
-
-VaultSentry supports both **instant alerts** and **daily digest reporting**.
-
-**Immediate alerts**
-
-Triggered instantly for critical events such as:
-
-* ransomware suspected
-* backup size drop
-* missing backup files
-
-Enable in `config.py`:
-
-```python
-EMAIL_ENABLED = True
-```
-
-**Daily digest**
-
-A single HTML report summarising:
-
-* last verification run
-* all alerts in previous 25 hours
-* backup system health
-
-```python
-DIGEST_ENABLED = True
-DIGEST_TIME = 8
-```
-
-Store SMTP credentials securely as an environment variable:
+Credentials stay out of the repository. Set the SMTP password once:
 
 ```powershell
 [System.Environment]::SetEnvironmentVariable(
-'VAULTSENTRY_EMAIL_PASSWORD',
-'your_app_password',
-'Machine'
-)
+  'VAULTSENTRY_EMAIL_PASSWORD', 'your_app_password', 'Machine')
 ```
 
----
+## Tests
 
-# 🏗 Architecture
-
-```
-VaultSentry
-│
-├── CLI + GUI (main.py)
-│
-├── Scanner Engine
-│   ├ baseline hash creation
-│   ├ nightly verification
-│   ├ ransomware entropy detection
-│   └ backup size analysis
-│
-├── Database Layer (SQLite)
-│   ├ file hashes
-│   ├ snapshots
-│   ├ alert history
-│   └ backup size trend
-│
-├── Alert System
-│   ├ desktop alerts
-│   ├ email notifications
-│   └ alert deduplication
-│
-└── Reporting Engine
-    ├ Excel reports
-    ├ daily digest email
-    └ system health summaries
-```
-
----
-
-# 🧠 Ransomware Detection
-
-VaultSentry uses **Shannon entropy analysis** to detect encryption activity.
-
-Normal files typically score:
-
-```
-4.0 – 6.5 entropy
-```
-
-Encrypted files typically score:
-
-```
-7.5 – 8.0 entropy
-```
-
-If a file's hash changes **AND entropy exceeds 7.8**, VaultSentry triggers:
-
-```
-CRITICAL: RANSOMWARE SUSPECTED
-```
-
-A second detection layer monitors **backup size trends**.
-
-If total backup size drops **≥30% overnight**, VaultSentry generates another CRITICAL alert.
-
-> **Note on compressed/Office formats:** `.zip`, `.pdf`, `.xlsx`, `.docx`, `.gz`, `.7z`, `.rar`, `.xls`, `.tar` files are excluded from entropy-based ransomware escalation because these formats naturally exceed the 7.8 threshold when healthy. Hash changes on these files still raise a `WARNING` alert, and structural integrity checking provides a second layer.
-
----
-
-# 🧪 Testing
-
-VaultSentry includes **162 automated unit tests**.
-
-Run tests with:
+162 unit tests covering the scanner, database layer, alerts, digest, restore, snapshots, size trend and file utilities.
 
 ```bash
 pip install pytest pytest-cov
 pytest tests/ -v
 ```
 
-Current test coverage: **73%**
+CI runs them on Python 3.10, 3.11 and 3.12.
 
----
-
-# 📂 Project Structure
+## Structure
 
 ```
-VaultSentry
-│
-├ main.py
-├ config.py
-├ logger.py
-├ Install_VaultSentry.bat
-├ Uninstall_VaultSentry.bat
-│
-├ core
-│   ├ database.py
-│   ├ alerts.py
-│   ├ scanner.py
-│   ├ restore.py
-│   ├ digest.py
-│   └ reports.py
-│
-├ gui
-│   ├ app.py
-│   ├ theme.py
-│   ├ tab_dashboard.py
-│   ├ tab_alerts.py
-│   ├ tab_reports.py
-│   ├ tab_restore.py
-│   ├ tab_snapshots.py
-│   └ tab_settings.py
-│
-├ utils
-│   └ file_utils.py
-│
-└ tests
+vaultsentry/
+├── main.py               CLI entry point
+├── config.py             paths, thresholds, email settings
+├── logger.py
+├── core/
+│   ├── scanner.py        baseline creation and the four verification passes
+│   ├── database.py       SQLite schema, file records, snapshots, size trend
+│   ├── alerts.py         severity, deduplication, popup, msg.exe, email
+│   ├── digest.py         daily HTML summary
+│   ├── reports.py        multi-sheet Excel output
+│   └── restore.py        restore planning and execution
+├── gui/                  Tkinter tabs and theme
+├── utils/file_utils.py   hashing, entropy, file listing
+└── tests/
 ```
 
----
+## Limits
 
-# 🛣 Roadmap
+| Limit | Detail |
+|---|---|
+| Local disks only | No S3, Backblaze or network shares. A remote copy is a separate job |
+| Detects, does not block | Ransomware already running is not stopped. Nothing is restored automatically |
+| Hash cost | Every file is read every night. A large backup takes as long as reading it takes |
+| Baseline trust | If the baseline is created after encryption has started, the encrypted state becomes the reference |
+| Windows only | Scheduled task and `msg.exe` are Windows specific |
+| Entropy is a heuristic | Compression, media files and encrypted documents sit high on the scale. The exclusion list exists for that reason |
 
-Future improvements planned for VaultSentry:
+## Changelog
 
-* Cloud backup monitoring (S3 / Backblaze)
-* Ransomware pattern learning
-* Web dashboard
-* Slack / Teams alerts
-* Anomaly detection on backup trends
-* Cross-platform support (Linux)
+**1.0.1**
 
----
+- Digest date persisted in a settings table, so the once-per-day guard survives a task restart
+- Test credential file removed from the repository, secret patterns added to `.gitignore`
+- Email failures surfaced in the dashboard instead of only in the log
+- Entropy false positives on PDF, ZIP and Office files removed from the critical path, warnings still fire
 
-# 📋 Changelog
+**1.0**
 
-**v1.0.1** *(current — security & reliability fixes)*
+- SHA-256 baselines, entropy detection, size trend, snapshots, restore, Excel reports, daily digest
+- Desktop dashboard, 162 tests, CI on three Python versions
 
-- **Fix 1 — Digest date persisted to database:** `_last_digest_date` was a module-level variable lost on every process restart. Now persisted in a `settings` DB table — the once-per-day guard survives nightly scheduled task restarts correctly.
-- **Fix 2 — Removed test credential file from repository:** Deleted `testpassword` file accidentally committed. Added `*.password`, `*.secret`, `*.key`, `*.pem`, `*.pfx` to `.gitignore`.
-- **Fix 3 — Email alert failures now visible in GUI:** Failures were logged but invisible. Now persisted to `settings.email_failure` in the DB. Dashboard shows a red banner when email alerts are failing; clears when email succeeds.
-- **Fix 4 — Entropy false positives on PDF/ZIP/Office files eliminated:** `.pdf`, `.xlsx`, `.docx`, `.zip`, `.gz`, `.7z`, `.rar`, `.xls`, `.tar` files naturally score above 7.8 entropy. These extensions now skip the CRITICAL ransomware escalation. Hash-change WARNING still fires. `is_file_openable` integrity check still runs.
+## Author
 
-**v1.0** *(original release)*
-
-- SHA-256 hashing, Shannon entropy ransomware detection, 4-step nightly pipeline
-- Backup size trend tracking with drop alert, baseline snapshot versioning + diff viewer
-- Restore capability with per-file overwrite prompts, daily HTML email digest
-- Dark blue GUI: Dashboard, Alerts, Reports, Restore, Snapshots, Settings
-- 162 tests, 73% coverage, CI on Python 3.10/3.11/3.12
-
----
-
-# ⚠ Disclaimer
-
-VaultSentry **detects backup integrity violations** but does not block ransomware or automatically restore data.
-
-Any **CRITICAL alert should be treated as an immediate security incident.**
-
----
-
-# 👨‍💻 Author
-
-**Egyan07**
-
-Developed for **Red Parrot Accounting Ltd**
-
----
-
-# 🛡 VaultSentry
-
-**Backup Integrity Monitoring. Ransomware Detection. Peace of Mind.**
+Egyan07, [github.com/Egyan07](https://github.com/Egyan07)
